@@ -52,7 +52,6 @@ function buildIndexes() {
 function attachEvents() {
   $("menuToggle").addEventListener("click", () => document.body.classList.add("sidebar-open"));
   $("closeSidebar").addEventListener("click", () => document.body.classList.remove("sidebar-open"));
-  $("bookFilter").addEventListener("input", renderSidebar);
   $("globalSearch").addEventListener("input", (event) => renderSearch(event.target.value));
   $("fontDown").addEventListener("click", () => setFontSize(state.fontSize - 1));
   $("fontUp").addEventListener("click", () => setFontSize(state.fontSize + 1));
@@ -72,16 +71,11 @@ function toggleTheme() {
 }
 
 function renderSidebar() {
-  const query = $("bookFilter").value.trim().toLowerCase();
   $("sidebarStats").textContent = `${numberFormatter.format(state.catalog.totals.books)} 本 · ${numberFormatter.format(state.catalog.totals.chapters)} 篇`;
 
   $("outline").innerHTML = state.catalog.categories
     .map((category) => {
-      const books = state.catalog.books.filter((book) => {
-        if (book.categoryId !== category.id) return false;
-        if (!query) return true;
-        return `${book.title} ${book.categoryTitle}`.toLowerCase().includes(query);
-      });
+      const books = state.catalog.books.filter((book) => book.categoryId === category.id);
       if (!books.length) return "";
 
       return `

@@ -101,7 +101,7 @@ button {
 }
 
 .search-box input,
-.filter-input {
+.search-box input {
   width: 100%;
   min-width: 0;
   border: 0;
@@ -170,17 +170,6 @@ button {
   font-weight: 600;
 }
 
-.filter-input {
-  display: block;
-  width: calc(100% - 24px);
-  height: 34px;
-  margin: 8px 12px 12px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--bg);
-}
-
 .outline {
   padding: 0 8px 18px;
 }
@@ -242,6 +231,10 @@ button {
 .main {
   min-width: 0;
   padding: 28px 34px 64px;
+}
+
+.main:focus {
+  outline: none;
 }
 
 .content {
