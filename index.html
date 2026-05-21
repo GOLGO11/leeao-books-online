@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>大李敖全集 6.0 在线阅读</title>
+    <meta name="description" content="基于分章节《大李敖全集6.0》制作的在线阅读网站。" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <button class="icon-button menu-button" id="menuToggle" type="button" aria-label="打开目录">☰</button>
+        <a class="brand" href="#home">大李敖全集 6.0</a>
+        <label class="search-box" for="globalSearch">
+          <span aria-hidden="true">⌕</span>
+          <input id="globalSearch" type="search" placeholder="搜索书名、篇名、当前书正文" />
+        </label>
+        <div class="toolbar" aria-label="阅读设置">
+          <button class="icon-button" id="fontDown" type="button" title="缩小字号" aria-label="缩小字号">A-</button>
+          <button class="icon-button" id="fontUp" type="button" title="放大字号" aria-label="放大字号">A+</button>
+          <button class="icon-button" id="themeToggle" type="button" title="切换明暗主题" aria-label="切换明暗主题">◐</button>
+        </div>
+      </header>
+
+      <aside class="sidebar" id="sidebar" aria-label="全集目录">
+        <div class="sidebar-head">
+          <div>
+            <strong>大李敖全集 6.0</strong>
+            <span id="sidebarStats">载入中</span>
+          </div>
+          <button class="icon-button close-sidebar" id="closeSidebar" type="button" aria-label="关闭目录">×</button>
+        </div>
+        <a class="home-link" href="#home">项目简介</a>
+        <input class="filter-input" id="bookFilter" type="search" placeholder="过滤目录" />
+        <nav class="outline" id="outline" aria-label="书目"></nav>
+      </aside>
+
+      <main class="main" id="main" tabindex="-1">
+        <section class="search-results" id="searchResults" hidden></section>
+        <article class="content" id="content"></article>
+      </main>
+    </div>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
