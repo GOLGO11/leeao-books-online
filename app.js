@@ -7,9 +7,12 @@ const state = {
   currentBook: null,
   fontSize: Number(localStorage.getItem("leeaoFontSize")) || 19,
   theme: localStorage.getItem("leeaoTheme") || "light",
+  locale: localStorage.getItem("leeaoLocale") || "simp",
+  converters: new Map(),
 };
 
 const $ = (id) => document.getElementById(id);
+const qs = (selector) => document.querySelector(selector);
 const numberFormatter = new Intl.NumberFormat("zh-CN");
 
 document.documentElement.dataset.theme = state.theme;
@@ -24,9 +27,10 @@ async function init() {
   state.catalog = await fetchJson("./data/catalog.json");
   buildIndexes();
   attachEvents();
+  applyStaticLocale();
   renderSidebar();
-  handleRoute();
-  window.addEventListener("hashchange", handleRoute);
+  await handleRoute();
+  window.addEventListener("hashchange", () => handleRoute());
 }
 
 async function fetchJson(url) {
@@ -55,6 +59,7 @@ function attachEvents() {
   $("globalSearch").addEventListener("input", (event) => renderSearch(event.target.value));
   $("fontDown").addEventListener("click", () => setFontSize(state.fontSize - 1));
   $("fontUp").addEventListener("click", () => setFontSize(state.fontSize + 1));
+  $("localeToggle").addEventListener("click", toggleLocale);
   $("themeToggle").addEventListener("click", toggleTheme);
 }
 
@@ -70,8 +75,85 @@ function toggleTheme() {
   document.documentElement.dataset.theme = state.theme;
 }
 
+async function toggleLocale() {
+  state.locale = state.locale === "trad" ? "simp" : "trad";
+  localStorage.setItem("leeaoLocale", state.locale);
+  applyStaticLocale();
+  renderSidebar();
+  await handleRoute();
+  renderSearch($("globalSearch").value);
+}
+
+function applyStaticLocale() {
+  document.documentElement.lang = state.locale === "trad" ? "zh-Hant" : "zh-CN";
+  qs(".brand").textContent = tr("大李敖全集 6.0");
+  $("globalSearch").placeholder = tr("搜索书名、篇名、当前书正文");
+  $("menuToggle").ariaLabel = tr("打开目录");
+  $("closeSidebar").ariaLabel = tr("关闭目录");
+  $("fontDown").title = tr("缩小字号");
+  $("fontDown").ariaLabel = tr("缩小字号");
+  $("fontUp").title = tr("放大字号");
+  $("fontUp").ariaLabel = tr("放大字号");
+  $("localeToggle").textContent = state.locale === "trad" ? "简" : "繁";
+  $("localeToggle").title = state.locale === "trad" ? "切换简体" : "切换繁体";
+  $("localeToggle").ariaLabel = $("localeToggle").title;
+  $("themeToggle").title = tr("切换明暗主题");
+  $("themeToggle").ariaLabel = tr("切换明暗主题");
+  qs(".sidebar-head strong").textContent = tr("大李敖全集 6.0");
+  qs(".home-link").textContent = tr("项目简介");
+  $("outline").ariaLabel = tr("书目");
+  qs(".toolbar").ariaLabel = tr("阅读设置");
+}
+
+function tr(text) {
+  const source = String(text);
+  if (state.locale !== "trad") return source;
+  return toTraditional(source);
+}
+
+function toTraditional(text) {
+  const converter = getConverter("cn", "tw");
+  return converter ? converter(String(text)) : String(text);
+}
+
+function toSimplifiedForSearch(text) {
+  const converter = getConverter("tw", "cn");
+  return converter ? converter(String(text)) : String(text);
+}
+
+function getConverter(from, to) {
+  const key = `${from}-${to}`;
+  if (state.converters.has(key)) return state.converters.get(key);
+  if (!window.OpenCC?.Converter) {
+    state.converters.set(key, null);
+    return null;
+  }
+  const converter = window.OpenCC.Converter({ from, to });
+  state.converters.set(key, converter);
+  return converter;
+}
+
+function convertElement(root) {
+  if (state.locale !== "trad" || !root) return;
+  const converter = getConverter("cn", "tw");
+  if (!converter) return;
+  const nodes = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (!node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      const parent = node.parentElement;
+      if (parent?.closest("script, style, textarea, input")) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  for (const node of nodes) {
+    node.nodeValue = converter(node.nodeValue);
+  }
+}
+
 function renderSidebar() {
-  $("sidebarStats").textContent = `${numberFormatter.format(state.catalog.totals.books)} 本 · ${numberFormatter.format(state.catalog.totals.chapters)} 篇`;
+  $("sidebarStats").textContent = tr(`${numberFormatter.format(state.catalog.totals.books)} 本 · ${numberFormatter.format(state.catalog.totals.chapters)} 篇`);
 
   $("outline").innerHTML = state.catalog.categories
     .map((category) => {
@@ -93,14 +175,15 @@ function renderSidebar() {
       `;
     })
     .join("");
+  convertElement($("outline"));
 }
 
-function handleRoute() {
+async function handleRoute() {
   const hash = decodeURIComponent(location.hash.replace(/^#/, "")) || "home";
   const [route, bookId, chapterId] = hash.split("/");
 
   if (route === "book" && bookId) {
-    openBook(bookId, chapterId);
+    await openBook(bookId, chapterId);
     return;
   }
 
@@ -127,6 +210,7 @@ function renderHome() {
     <h2>${escapeHtml(state.catalog.intro.title)}</h2>
     ${textToHtml(state.catalog.intro.text)}
   `;
+  convertElement($("content"));
 
   $("main").focus({ preventScroll: true });
   window.scrollTo({ top: 0, behavior: "auto" });
@@ -178,6 +262,7 @@ function renderBook(book) {
     </ol>
     ${book.chapters.map(renderChapter).join("")}
   `;
+  convertElement($("content"));
 }
 
 function renderChapter(chapter) {
@@ -205,7 +290,8 @@ function renderSearch(rawQuery) {
     return;
   }
 
-  const lower = query.toLowerCase();
+  const searchNeedle = toSimplifiedForSearch(query);
+  const lower = searchNeedle.toLowerCase();
   const bookMatches = state.catalog.books
     .filter((book) => `${book.title} ${book.categoryTitle}`.toLowerCase().includes(lower))
     .slice(0, 12);
@@ -233,7 +319,7 @@ function renderSearch(rawQuery) {
       "书名",
       bookMatches.map((book) => ({
         href: `#book/${book.id}`,
-        title: highlight(book.title, query),
+        title: highlight(book.title, searchNeedle),
         meta: `${escapeHtml(book.categoryTitle)} · ${numberFormatter.format(book.chapterCount)} 篇`,
       })),
     )}
@@ -241,7 +327,7 @@ function renderSearch(rawQuery) {
       "篇名",
       chapterMatches.map((chapter) => ({
         href: `#book/${chapter.bookId}/${chapter.id}`,
-        title: highlight(chapter.title, query),
+        title: highlight(chapter.title, searchNeedle),
         meta: `${escapeHtml(chapter.bookTitle)} · ${escapeHtml(chapter.categoryTitle)}`,
       })),
     )}
@@ -249,8 +335,8 @@ function renderSearch(rawQuery) {
       state.currentBook ? `当前书正文：${state.currentBook.title}` : "当前书正文",
       bodyMatches.map(({ chapter, index }) => ({
         href: `#book/${state.currentBook.id}/${chapter.id}`,
-        title: highlight(chapter.title, query),
-        meta: highlight(makeSnippet(chapter.text, index, query.length), query),
+        title: highlight(chapter.title, searchNeedle),
+        meta: highlight(makeSnippet(chapter.text, index, searchNeedle.length), searchNeedle),
       })),
       state.currentBook ? "正文搜索至少输入两个字。" : "打开一本书后可搜索正文。",
     )}
@@ -260,6 +346,7 @@ function renderSearch(rawQuery) {
     $("globalSearch").value = "";
     renderSearch("");
   });
+  convertElement(container);
 }
 
 function renderResultGroup(title, items, emptyText = "没有匹配项。") {
