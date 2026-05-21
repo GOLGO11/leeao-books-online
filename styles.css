@@ -395,12 +395,15 @@ mark {
 @media (max-width: 860px) {
   .app-shell {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .topbar {
     grid-template-columns: auto minmax(0, 1fr) auto;
     height: auto;
     min-height: 50px;
+    row-gap: 8px;
+    padding: 8px 12px;
   }
 
   .menu-button {
@@ -410,7 +413,6 @@ mark {
   .search-box {
     grid-column: 1 / -1;
     order: 2;
-    margin-bottom: 8px;
   }
 
   .sidebar {
